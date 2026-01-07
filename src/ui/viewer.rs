@@ -140,8 +140,11 @@ impl ViewerWidget {
                 Style::default()
             };
 
+            // Expand tabs to spaces (tab width = 4)
+            let expanded_content = line_content.replace('\t', "    ");
+
             let mut spans = vec![Span::styled(line_number_str, line_number_style)];
-            spans.push(Span::styled(line_content.clone(), content_style));
+            spans.push(Span::styled(expanded_content, content_style));
 
             lines.push(Line::from(spans));
         }

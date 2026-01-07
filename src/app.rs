@@ -27,11 +27,18 @@ impl ViewState {
         let lines = file_context.get_range(start_line, end_line)?;
         let visible_range = LineRange::new(start_line, end_line, lines);
 
+        // Set current_line to 1 for non-empty files, 0 for empty files
+        let current_line = if start_line == 0 && end_line == 0 {
+            0 // Empty file
+        } else {
+            start_line.max(1) // Ensure at least line 1 for non-empty files
+        };
+
         Ok(Self {
             file_context,
             visible_range,
             scroll_offset: 0,
-            current_line: start_line,
+            current_line,
         })
     }
 }

@@ -198,12 +198,16 @@ impl App {
 
     /// Scroll up by one line (T044)
     fn scroll_up(&mut self) -> Result<()> {
-        if self.view_state.visible_range.start_line > 1 {
-            let new_start = self.view_state.visible_range.start_line - 1;
-            let new_end = self.view_state.visible_range.end_line - 1;
-            self.update_visible_range(new_start, new_end)?;
-            if self.view_state.current_line > self.view_state.visible_range.start_line {
-                self.view_state.current_line -= 1;
+        // Move cursor up if not at top of file
+        if self.view_state.current_line > 1 {
+            self.view_state.current_line -= 1;
+
+            // Scroll viewport if cursor moved above visible area
+            if self.view_state.current_line < self.view_state.visible_range.start_line {
+                let new_start = self.view_state.current_line;
+                let page_size = self.view_state.visible_range.end_line - self.view_state.visible_range.start_line;
+                let new_end = (new_start + page_size).min(self.view_state.file_context.total_lines);
+                self.update_visible_range(new_start, new_end)?;
             }
         }
         Ok(())
@@ -211,12 +215,16 @@ impl App {
 
     /// Scroll down by one line (T045)
     fn scroll_down(&mut self) -> Result<()> {
-        if self.view_state.visible_range.end_line < self.view_state.file_context.total_lines {
-            let new_start = self.view_state.visible_range.start_line + 1;
-            let new_end = self.view_state.visible_range.end_line + 1;
-            self.update_visible_range(new_start, new_end)?;
-            if self.view_state.current_line < self.view_state.visible_range.end_line {
-                self.view_state.current_line += 1;
+        // Move cursor down if not at end of file
+        if self.view_state.current_line < self.view_state.file_context.total_lines {
+            self.view_state.current_line += 1;
+
+            // Scroll viewport if cursor moved below visible area
+            if self.view_state.current_line > self.view_state.visible_range.end_line {
+                let new_end = self.view_state.current_line;
+                let page_size = self.view_state.visible_range.end_line - self.view_state.visible_range.start_line;
+                let new_start = new_end.saturating_sub(page_size).max(1);
+                self.update_visible_range(new_start, new_end)?;
             }
         }
         Ok(())

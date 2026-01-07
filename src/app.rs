@@ -98,10 +98,28 @@ impl ViewState {
             .filter_map(|l| l.ok())
             .collect();
 
+        // Validate target_line is within file bounds
+        if all_lines.is_empty() {
+            return Err(crate::error::GliError::FileNotFound(
+                "Preview file is empty".to_string(),
+            ));
+        }
+
+        // Clamp target_line to file bounds
+        let target_line = target_line.min(all_lines.len());
+
         let start_line = target_line.saturating_sub(context).max(1);
         let end_line = (target_line + context).min(all_lines.len());
 
-        let lines = all_lines[(start_line - 1)..end_line].to_vec();
+        // Ensure start_line is valid for slicing
+        let start_idx = (start_line - 1).min(all_lines.len().saturating_sub(1));
+        let end_idx = end_line.min(all_lines.len());
+
+        let lines = if start_idx < end_idx {
+            all_lines[start_idx..end_idx].to_vec()
+        } else {
+            vec![]
+        };
 
         Ok(PreviewContent {
             file_path: file_path.to_string(),

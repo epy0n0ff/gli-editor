@@ -1,11 +1,11 @@
 /// Line viewing widget
-use crate::app::{EditState, ViewState};
+use crate::app::{EditState, PreviewContent, ViewState};
 use crate::models::pattern::PatternType;
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph, Wrap},
     Frame,
 };
 
@@ -19,8 +19,24 @@ impl ViewerWidget {
             .constraints([Constraint::Min(1), Constraint::Length(1)])
             .split(f.size());
 
-        // Render content area
-        Self::render_content(f, view_state, chunks[0]);
+        // Split content area into left (gitleaksignore) and right (preview) if preview is enabled
+        if view_state.preview_enabled && view_state.preview_content.is_some() {
+            let content_chunks = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                .split(chunks[0]);
+
+            // Render gitleaksignore content on left
+            Self::render_content(f, view_state, content_chunks[0]);
+
+            // Render preview on right
+            if let Some(ref preview) = view_state.preview_content {
+                Self::render_preview(f, preview, content_chunks[1]);
+            }
+        } else {
+            // Render full-width content
+            Self::render_content(f, view_state, chunks[0]);
+        }
 
         // Render status line with optional save message (T040)
         Self::render_status(f, view_state, save_message, chunks[1]);
@@ -104,21 +120,60 @@ impl ViewerWidget {
         f.render_widget(paragraph, area);
     }
 
+    fn render_preview(f: &mut Frame, preview: &PreviewContent, area: Rect) {
+        let mut lines = Vec::new();
+
+        for (idx, line_content) in preview.lines.iter().enumerate() {
+            let line_num = preview.start_line + idx;
+            let is_target = line_num == preview.target_line;
+
+            let line_number_str = format!("{:>4} ", line_num);
+            let line_number_style = if is_target {
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::DarkGray)
+            };
+
+            let content_style = if is_target {
+                Style::default().bg(Color::Rgb(60, 40, 40)).fg(Color::White)
+            } else {
+                Style::default()
+            };
+
+            let mut spans = vec![Span::styled(line_number_str, line_number_style)];
+            spans.push(Span::styled(line_content.clone(), content_style));
+
+            lines.push(Line::from(spans));
+        }
+
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(format!(" Preview: {} (line {}) ", preview.file_path, preview.target_line))
+            .style(Style::default().fg(Color::Cyan));
+
+        let paragraph = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+
+        f.render_widget(paragraph, area);
+    }
+
     fn render_status(
         f: &mut Frame,
         view_state: &ViewState,
         save_message: Option<&str>,
         area: Rect,
     ) {
+        let preview_status = if view_state.preview_enabled { "p:toggle" } else { "p:enable" };
+
         let status = if let Some(msg) = save_message {
             format!(" VIEW | {} ", msg)
         } else {
             format!(
-                " VIEW | Line {}/{} (showing {}-{}) | j/k:scroll u/d:page g/G:jump i:edit q:quit ",
+                " VIEW | Line {}/{} (showing {}-{}) | j/k:scroll {} i:edit q:quit ",
                 view_state.current_line,
                 view_state.file_context.total_lines,
                 view_state.visible_range.start_line,
-                view_state.visible_range.end_line
+                view_state.visible_range.end_line,
+                preview_status
             )
         };
 

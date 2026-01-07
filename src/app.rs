@@ -20,6 +20,17 @@ pub struct ViewState {
     pub visible_range: LineRange,
     pub scroll_offset: usize,
     pub current_line: usize,
+    pub preview_enabled: bool,
+    pub preview_content: Option<PreviewContent>,
+}
+
+/// Preview content for the selected line
+#[derive(Debug, Clone)]
+pub struct PreviewContent {
+    pub file_path: String,
+    pub target_line: usize,
+    pub lines: Vec<String>,
+    pub start_line: usize,
 }
 
 impl ViewState {
@@ -39,6 +50,64 @@ impl ViewState {
             visible_range,
             scroll_offset: 0,
             current_line,
+            preview_enabled: true,
+            preview_content: None,
+        })
+    }
+
+    /// Update preview content for the current line
+    pub fn update_preview(&mut self) {
+        self.preview_content = None;
+
+        if !self.preview_enabled {
+            return;
+        }
+
+        // Get current line
+        if let Some(line) = self.file_context.get_line(self.current_line) {
+            // Extract file path and line number from fingerprint
+            if let crate::models::pattern::PatternType::Fingerprint {
+                file_path,
+                line_number,
+                ..
+            } = &line.pattern_type
+            {
+                // Try to read the target file
+                if let Ok(content) = Self::read_preview_file(file_path, *line_number) {
+                    self.preview_content = Some(content);
+                }
+            }
+        }
+    }
+
+    /// Read preview content from target file
+    fn read_preview_file(file_path: &str, target_line: u32) -> Result<PreviewContent> {
+        use std::fs::File;
+        use std::io::{BufRead, BufReader};
+
+        let target_line = target_line as usize;
+        let context = 10; // Show ±10 lines around target
+
+        let file = File::open(file_path).map_err(|_| {
+            crate::error::GliError::FileNotFound(format!("Preview file not found: {}", file_path))
+        })?;
+
+        let reader = BufReader::new(file);
+        let all_lines: Vec<String> = reader
+            .lines()
+            .filter_map(|l| l.ok())
+            .collect();
+
+        let start_line = target_line.saturating_sub(context).max(1);
+        let end_line = (target_line + context).min(all_lines.len());
+
+        let lines = all_lines[(start_line - 1)..end_line].to_vec();
+
+        Ok(PreviewContent {
+            file_path: file_path.to_string(),
+            target_line,
+            lines,
+            start_line,
         })
     }
 }
@@ -99,7 +168,10 @@ impl App {
         let (start_line, end_line) = line_spec.calculate_range(file_context.total_lines)?;
 
         // Create view state
-        let view_state = ViewState::new(file_context, start_line, end_line)?;
+        let mut view_state = ViewState::new(file_context, start_line, end_line)?;
+
+        // Initialize preview for the first line
+        view_state.update_preview();
 
         Ok(Self {
             mode: AppMode::View,
@@ -209,6 +281,9 @@ impl App {
                 let new_end = (new_start + page_size).min(self.view_state.file_context.total_lines);
                 self.update_visible_range(new_start, new_end)?;
             }
+
+            // Update preview for new line
+            self.view_state.update_preview();
         }
         Ok(())
     }
@@ -226,6 +301,9 @@ impl App {
                 let new_start = new_end.saturating_sub(page_size).max(1);
                 self.update_visible_range(new_start, new_end)?;
             }
+
+            // Update preview for new line
+            self.view_state.update_preview();
         }
         Ok(())
     }
@@ -400,6 +478,13 @@ impl App {
                     // Navigation: jump to bottom
                     KeyCode::Char('G') | KeyCode::End => {
                         self.jump_to_bottom()?;
+                    }
+                    // Toggle preview pane
+                    KeyCode::Char('p') => {
+                        self.view_state.preview_enabled = !self.view_state.preview_enabled;
+                        if self.view_state.preview_enabled {
+                            self.view_state.update_preview();
+                        }
                     }
                     _ => {}
                 }

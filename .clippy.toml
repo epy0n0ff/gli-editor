@@ -1,0 +1,9 @@
+# Clippy configuration for gli-editor
+
+# Warn on all clippy lints by default
+warn-on-all-wildcard-imports = true
+
+# Specific lint levels
+cognitive-complexity-threshold = 30
+too-many-arguments-threshold = 7
+type-complexity-threshold = 250

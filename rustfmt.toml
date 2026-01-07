@@ -1,0 +1,28 @@
+# Rustfmt configuration for gli-editor
+
+# Edition
+edition = "2021"
+
+# Maximum line width
+max_width = 100
+
+# Number of spaces per tab
+tab_spaces = 4
+
+# Use field init shorthand if possible
+use_field_init_shorthand = true
+
+# Reorder imports
+reorder_imports = true
+
+# Group imports by module
+imports_granularity = "Module"
+
+# Format strings
+format_strings = true
+
+# Normalize comments
+normalize_comments = true
+
+# Wrap comments at max_width
+wrap_comments = true

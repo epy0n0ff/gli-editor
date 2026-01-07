@@ -1,0 +1,17 @@
+[package]
+name = "gli-editor"
+version = "1.0.0"
+edition = "2021"
+authors = ["epy0n0ff"]
+description = "Terminal editor for .gitleaksignore files"
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/epy0n0ff/gli-editor"
+
+[dependencies]
+ratatui = "0.26"
+crossterm = "0.27"
+tui-textarea = { version = "0.4", features = ["crossterm"] }
+tempfile = "3.8"
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive"] }

@@ -1,0 +1,46 @@
+# Rust build artifacts
+target/
+Cargo.lock
+
+# Backup files
+*.rs.bk
+*.orig
+
+# Profiling and debugging
+*.prof
+*.profdata
+perf.data
+perf.data.old
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Runtime artifacts
+*.log
+.env
+.env.*
+
+# Test artifacts
+*.test
+coverage/
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.rlib
+*.lib
+*.a
+
+# Executables
+*.exe
+
+# Backups created by the application itself
+.gitleaksignore.backup.*

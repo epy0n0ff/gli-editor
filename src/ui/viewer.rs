@@ -69,14 +69,22 @@ impl ViewerWidget {
         let mut lines = Vec::new();
 
         for line in &view_state.visible_range.entries {
-            let line_number_str = format!("{:>4} ", line.line_number);
-            let mut spans = vec![Span::styled(
-                line_number_str,
-                Style::default().fg(Color::DarkGray),
-            )];
+            let is_current = line.line_number == view_state.current_line;
 
-            // Add syntax-highlighted content
-            let content_spans = Self::highlight_line(&line.content, &line.pattern_type);
+            // Add cursor indicator for current line
+            let cursor_indicator = if is_current { ">" } else { " " };
+            let line_number_str = format!("{}{:>4} ", cursor_indicator, line.line_number);
+
+            let line_number_style = if is_current {
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::DarkGray)
+            };
+
+            let mut spans = vec![Span::styled(line_number_str, line_number_style)];
+
+            // Add syntax-highlighted content with background highlight for current line
+            let content_spans = Self::highlight_line(&line.content, &line.pattern_type, is_current);
             spans.extend(content_spans);
 
             lines.push(Line::from(spans));
@@ -106,10 +114,11 @@ impl ViewerWidget {
             format!(" VIEW | {} ", msg)
         } else {
             format!(
-                " VIEW | Lines {}-{}/{} | j/k:scroll u/d:page g/G:jump i:edit q:quit ",
+                " VIEW | Line {}/{} (showing {}-{}) | j/k:scroll u/d:page g/G:jump i:edit q:quit ",
+                view_state.current_line,
+                view_state.file_context.total_lines,
                 view_state.visible_range.start_line,
-                view_state.visible_range.end_line,
-                view_state.file_context.total_lines
+                view_state.visible_range.end_line
             )
         };
 
@@ -120,12 +129,18 @@ impl ViewerWidget {
     }
 
     /// Apply syntax highlighting to a line based on its pattern type
-    fn highlight_line(content: &str, pattern_type: &PatternType) -> Vec<Span<'static>> {
+    fn highlight_line(content: &str, pattern_type: &PatternType, is_current: bool) -> Vec<Span<'static>> {
+        let base_style = if is_current {
+            Style::default().bg(Color::Rgb(40, 40, 50))
+        } else {
+            Style::default()
+        };
+
         match pattern_type {
             PatternType::Comment => {
                 vec![Span::styled(
                     content.to_string(),
-                    Style::default()
+                    base_style
                         .fg(Color::DarkGray)
                         .add_modifier(Modifier::ITALIC),
                 )]
@@ -139,22 +154,22 @@ impl ViewerWidget {
                 vec![
                     Span::styled(
                         format!("{}:", commit_hash),
-                        Style::default()
+                        base_style
                             .fg(Color::Yellow)
                             .add_modifier(Modifier::BOLD),
                     ),
-                    Span::styled(format!("{}:", file_path), Style::default().fg(Color::Cyan)),
-                    Span::styled(format!("{}:", rule_id), Style::default().fg(Color::Magenta)),
-                    Span::styled(line_number.to_string(), Style::default().fg(Color::Green)),
+                    Span::styled(format!("{}:", file_path), base_style.fg(Color::Cyan)),
+                    Span::styled(format!("{}:", rule_id), base_style.fg(Color::Magenta)),
+                    Span::styled(line_number.to_string(), base_style.fg(Color::Green)),
                 ]
             }
             PatternType::BlankLine => {
-                vec![Span::raw(content.to_string())]
+                vec![Span::styled(content.to_string(), base_style)]
             }
             PatternType::Invalid => {
                 vec![Span::styled(
                     content.to_string(),
-                    Style::default()
+                    base_style
                         .fg(Color::Red)
                         .add_modifier(Modifier::UNDERLINED),
                 )]

@@ -5,6 +5,7 @@ Terminal editor for `.gitleaksignore` files with syntax highlighting and inline 
 ## Features
 
 - 📄 **View Mode**: Browse `.gitleaksignore` files with syntax highlighting
+- 👉 **Current Line Indicator**: Visual cursor showing active line (yellow line number + background highlight)
 - ✏️ **Edit Mode**: Inline editing of individual entries
 - 🎨 **Syntax Highlighting**: Pattern-based coloring for fingerprints, comments, and invalid entries
 - 🔒 **Safe Editing**: Automatic backups and atomic file writes

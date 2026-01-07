@@ -206,17 +206,24 @@ impl ViewerWidget {
                 rule_id,
                 line_number,
             } => {
-                vec![
-                    Span::styled(
-                        format!("{}:", commit_hash),
+                let mut spans = Vec::new();
+
+                // Add commit hash if present
+                if let Some(hash) = commit_hash {
+                    spans.push(Span::styled(
+                        format!("{}:", hash),
                         base_style
                             .fg(Color::Yellow)
                             .add_modifier(Modifier::BOLD),
-                    ),
-                    Span::styled(format!("{}:", file_path), base_style.fg(Color::Cyan)),
-                    Span::styled(format!("{}:", rule_id), base_style.fg(Color::Magenta)),
-                    Span::styled(line_number.to_string(), base_style.fg(Color::Green)),
-                ]
+                    ));
+                }
+
+                // Add file path, rule ID, and line number
+                spans.push(Span::styled(format!("{}:", file_path), base_style.fg(Color::Cyan)));
+                spans.push(Span::styled(format!("{}:", rule_id), base_style.fg(Color::Magenta)));
+                spans.push(Span::styled(line_number.to_string(), base_style.fg(Color::Green)));
+
+                spans
             }
             PatternType::BlankLine => {
                 vec![Span::styled(content.to_string(), base_style)]

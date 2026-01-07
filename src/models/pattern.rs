@@ -4,9 +4,9 @@
 pub enum PatternType {
     /// Line starting with # (comment)
     Comment,
-    /// Valid gitleaks fingerprint with 4 components
+    /// Valid gitleaks fingerprint with 3-4 components
     Fingerprint {
-        commit_hash: String,
+        commit_hash: Option<String>,
         file_path: String,
         rule_id: String,
         line_number: u32,
@@ -45,41 +45,50 @@ impl PatternType {
         }
 
         // Try to parse as fingerprint
-        // Format: commit_hash:file_path:rule_id:line_number
+        // Format: [commit_hash:]file_path:rule_id:line_number
         // Note: file_path can contain ':' for archives (e.g., archive.tar.gz:inner.tar:file.env)
 
-        // Find the first ':' - that should end the commit hash
-        let Some(first_colon) = trimmed.find(':') else {
+        // Find the last ':' for line_number
+        let Some(last_colon) = trimmed.rfind(':') else {
             return PatternType::Invalid;
         };
 
-        let commit_hash = &trimmed[..first_colon];
-
-        // Validate commit hash: exactly 40 hex characters
-        if commit_hash.len() != 40 || !commit_hash.chars().all(|c| c.is_ascii_hexdigit()) {
-            return PatternType::Invalid;
-        }
-
-        let rest = &trimmed[first_colon + 1..];
-
-        // Find the last two ':' for rule_id and line_number
-        // We work backwards to handle file paths with colons
-        let Some(last_colon) = rest.rfind(':') else {
-            return PatternType::Invalid;
-        };
-
-        let line_number_str = &rest[last_colon + 1..];
+        let line_number_str = &trimmed[last_colon + 1..];
         let Ok(line_number) = line_number_str.parse::<u32>() else {
             return PatternType::Invalid;
         };
 
-        let middle = &rest[..last_colon];
-        let Some(second_last_colon) = middle.rfind(':') else {
+        let rest = &trimmed[..last_colon];
+
+        // Find second-to-last ':' for rule_id
+        let Some(second_last_colon) = rest.rfind(':') else {
             return PatternType::Invalid;
         };
 
-        let rule_id = &middle[second_last_colon + 1..];
-        let file_path = &middle[..second_last_colon];
+        let rule_id = &rest[second_last_colon + 1..];
+        let remaining = &rest[..second_last_colon];
+
+        // Check if there's a third ':' for commit_hash
+        if let Some(third_last_colon) = remaining.rfind(':') {
+            let potential_hash = &remaining[..third_last_colon];
+
+            // Check if it looks like a commit hash (40 hex chars)
+            if potential_hash.len() == 40 && potential_hash.chars().all(|c| c.is_ascii_hexdigit()) {
+                let file_path = &remaining[third_last_colon + 1..];
+
+                if !file_path.is_empty() && !rule_id.is_empty() {
+                    return PatternType::Fingerprint {
+                        commit_hash: Some(potential_hash.to_string()),
+                        file_path: file_path.to_string(),
+                        rule_id: rule_id.to_string(),
+                        line_number,
+                    };
+                }
+            }
+        }
+
+        // No commit hash, treat remaining as file_path
+        let file_path = remaining;
 
         // Validate that we have non-empty components
         if file_path.is_empty() || rule_id.is_empty() {
@@ -87,7 +96,7 @@ impl PatternType {
         }
 
         PatternType::Fingerprint {
-            commit_hash: commit_hash.to_string(),
+            commit_hash: None,
             file_path: file_path.to_string(),
             rule_id: rule_id.to_string(),
             line_number,

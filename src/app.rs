@@ -274,10 +274,15 @@ impl App {
         if self.view_state.current_line > 1 {
             self.view_state.current_line -= 1;
 
-            // Scroll viewport if cursor moved above visible area
-            if self.view_state.current_line < self.view_state.visible_range.start_line {
-                let new_start = self.view_state.current_line;
-                let page_size = self.view_state.visible_range.end_line - self.view_state.visible_range.start_line;
+            // Calculate scroll margin (lines from top/bottom before scrolling)
+            let scroll_margin = 3;
+            let page_size = self.view_state.visible_range.end_line - self.view_state.visible_range.start_line;
+
+            // Scroll viewport if cursor approaches top edge
+            let distance_from_top = self.view_state.current_line.saturating_sub(self.view_state.visible_range.start_line);
+            if distance_from_top < scroll_margin && self.view_state.visible_range.start_line > 1 {
+                // Scroll viewport up by one line
+                let new_start = self.view_state.visible_range.start_line.saturating_sub(1);
                 let new_end = (new_start + page_size).min(self.view_state.file_context.total_lines);
                 self.update_visible_range(new_start, new_end)?;
             }
@@ -294,11 +299,16 @@ impl App {
         if self.view_state.current_line < self.view_state.file_context.total_lines {
             self.view_state.current_line += 1;
 
-            // Scroll viewport if cursor moved below visible area
-            if self.view_state.current_line > self.view_state.visible_range.end_line {
-                let new_end = self.view_state.current_line;
-                let page_size = self.view_state.visible_range.end_line - self.view_state.visible_range.start_line;
-                let new_start = new_end.saturating_sub(page_size).max(1);
+            // Calculate scroll margin (lines from top/bottom before scrolling)
+            let scroll_margin = 3;
+            let page_size = self.view_state.visible_range.end_line - self.view_state.visible_range.start_line;
+
+            // Scroll viewport if cursor approaches bottom edge
+            let distance_from_bottom = self.view_state.visible_range.end_line.saturating_sub(self.view_state.current_line);
+            if distance_from_bottom < scroll_margin && self.view_state.visible_range.end_line < self.view_state.file_context.total_lines {
+                // Scroll viewport down by one line
+                let new_start = self.view_state.visible_range.start_line + 1;
+                let new_end = (new_start + page_size).min(self.view_state.file_context.total_lines);
                 self.update_visible_range(new_start, new_end)?;
             }
 

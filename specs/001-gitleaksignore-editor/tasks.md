@@ -385,3 +385,51 @@ With multiple developers:
 - US4: View patterns, verify colors distinguish types
 
 **Suggested MVP Scope**: Phase 1 + Phase 2 + Phase 3 (US1 only) = 27 tasks for functional viewer with syntax highlighting
+
+---
+
+## Additional Features (Post-Implementation)
+
+### Visual Cursor Indicator (User Story 5)
+- [X] T090 [US5] Add cursor indicator rendering in src/ui/viewer.rs: display ">" prefix for current line
+- [X] T091 [US5] Implement current line highlighting in src/ui/viewer.rs: yellow line number with bold style
+- [X] T092 [US5] Add background highlight for current line content in src/ui/viewer.rs: RGB(40,40,50) background color
+- [X] T093 [US5] Update ViewState to track current_line position in src/app.rs
+- [X] T094 [US5] Ensure cursor starts at line 1 for non-empty files in src/app.rs
+
+### Live Preview Pane (User Story 6)
+- [X] T095 [P] [US6] Add PreviewContent struct in src/app.rs with file_path, target_line, lines, start_line fields
+- [X] T096 [P] [US6] Update ViewState with preview_enabled and preview_content fields in src/app.rs
+- [X] T097 [US6] Implement read_preview_file() method in src/app.rs: read ±10 lines around target
+- [X] T098 [US6] Add bounds checking in read_preview_file() to handle out-of-bounds line numbers
+- [X] T099 [US6] Implement update_preview() method in src/app.rs: extract fingerprint data and load preview
+- [X] T100 [US6] Update PatternType parser to support short-form fingerprints (without commit hash)
+- [X] T101 [US6] Implement split-pane layout in src/ui/viewer.rs: 50/50 horizontal split
+- [X] T102 [US6] Create render_preview() method in src/ui/viewer.rs with cyan border and target line highlighting
+- [X] T103 [US6] Add 'p' keybinding to toggle preview on/off in src/app.rs
+- [X] T104 [US6] Update preview on j/k navigation in src/app.rs scroll methods
+
+### Smooth Scrolling
+- [X] T105 [US3] Implement scroll margin logic in scroll_up() and scroll_down() methods: 3-line buffer from edges
+- [X] T106 [US3] Add viewport adjustment in src/app.rs: auto-scroll when cursor approaches top/bottom edge
+- [X] T107 [US3] Implement adjust_viewport_to_screen() method: constrain viewport to terminal size
+- [X] T108 [US3] Fix page navigation boundary errors: ensure new_end >= new_start
+
+### Line Deletion (User Story 7)
+- [X] T109 [P] [US7] Add delete_line() method to FileContext in src/core/file_reader.rs
+- [X] T110 [US7] Implement line renumbering after deletion in delete_line() method
+- [X] T111 [P] [US7] Add pending_delete field to App struct in src/app.rs for dd command state
+- [X] T112 [US7] Implement delete_current_line() method in src/app.rs with backup creation
+- [X] T113 [US7] Handle empty file state after deletion in delete_current_line() method
+- [X] T114 [US7] Update viewport and cursor after deletion in delete_current_line() method
+- [X] T115 [US7] Add 'd' key handler for dd command in src/app.rs handle_key() method
+- [X] T116 [US7] Add Delete key handler for immediate deletion in src/app.rs
+- [X] T117 [US7] Implement pending delete cancellation on navigation keys in src/app.rs
+- [X] T118 [US7] Add read-only mode check for deletion in delete_current_line() method
+- [X] T119 [US7] Update README.md with deletion keybindings and feature description
+
+---
+
+**Updated Total Tasks**: 119
+**Additional Features**: 30 tasks (T090-T119)
+**Status**: All additional feature tasks completed

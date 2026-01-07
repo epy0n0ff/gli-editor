@@ -74,6 +74,59 @@ A developer viewing .gitleaksignore patterns wants visual cues to distinguish di
 
 ---
 
+### User Story 5 - Visual Cursor Indicator (Priority: P4)
+
+A developer navigating through the .gitleaksignore file needs to clearly identify which line is currently selected for editing or deletion operations.
+
+**Why this priority**: Clear visual feedback enhances usability but isn't essential for core functionality. Users can still navigate and edit without it, though it may be less intuitive.
+
+**Independent Test**: Can be tested by navigating through file lines and confirming that the current line is visually distinct from others.
+
+**Acceptance Scenarios**:
+
+1. **Given** user is viewing file content, **When** cursor is on a specific line, **Then** system displays a visual indicator (cursor symbol) next to the line number
+2. **Given** user navigates between lines, **When** cursor position changes, **Then** system updates the visual indicator to follow the cursor
+3. **Given** user is viewing the current line, **When** the line is highlighted, **Then** system applies background color and bold styling to distinguish it from other lines
+
+---
+
+### User Story 6 - Live Preview Pane for Fingerprints (Priority: P3)
+
+A developer reviewing fingerprint entries in .gitleaksignore wants to see the actual source code that triggered the pattern to understand context and decide whether the ignore rule is still valid.
+
+**Why this priority**: Preview functionality significantly enhances the review process but requires fingerprint parsing to work first. Users can still edit patterns without it.
+
+**Independent Test**: Can be tested by selecting a fingerprint entry and verifying that the referenced source file and line are displayed in a split pane.
+
+**Acceptance Scenarios**:
+
+1. **Given** user selects a fingerprint entry, **When** the entry contains file path and line number, **Then** system displays the source file content in a preview pane
+2. **Given** preview pane is visible, **When** source file is displayed, **Then** system highlights the target line referenced in the fingerprint
+3. **Given** user navigates between fingerprint entries, **When** cursor moves to a new entry, **Then** system automatically updates the preview content
+4. **Given** user is viewing a preview, **When** user toggles preview mode, **Then** system shows or hides the preview pane while preserving full-width viewing mode
+5. **Given** fingerprint references a non-existent file or line number, **When** preview is requested, **Then** system handles the error gracefully without crashing
+
+---
+
+### User Story 7 - Line Deletion (Priority: P2)
+
+A developer reviewing .gitleaksignore entries identifies obsolete patterns that should be removed and wants to delete them directly without opening a full text editor.
+
+**Why this priority**: Deletion complements editing capabilities and is essential for file maintenance. However, it's slightly lower priority than editing since users can delete by editing the line to be empty.
+
+**Independent Test**: Can be tested by selecting a line, executing delete command, and verifying the line is removed from the file with proper backup creation.
+
+**Acceptance Scenarios**:
+
+1. **Given** user is viewing a specific line, **When** user executes delete command (dd or Delete key), **Then** system removes the line from the file
+2. **Given** user deletes a line, **When** deletion is confirmed, **Then** system creates a backup before removing the line
+3. **Given** user accidentally triggers delete, **When** using dd command, **Then** system requires confirmation (second 'd' press) to prevent accidental deletion
+4. **Given** user deletes the last line in file, **When** deletion completes, **Then** system adjusts cursor to the new last line or handles empty file state
+5. **Given** file is in read-only mode, **When** user attempts to delete, **Then** system displays an error message and prevents deletion
+6. **Given** user deletes a line, **When** deletion completes, **Then** system renumbers all subsequent lines and updates the preview
+
+---
+
 ### Edge Cases
 
 - What happens when the .gitleaksignore file doesn't exist in the current directory?
@@ -86,6 +139,14 @@ A developer viewing .gitleaksignore patterns wants visual cues to distinguish di
 - How does the system handle files without proper line endings or mixed line ending types?
 - What happens when the user lacks read permissions for the .gitleaksignore file?
 - How does the system handle concurrent edits by multiple users?
+- What happens when a fingerprint entry references a file that doesn't exist?
+- How does the system handle fingerprints with line numbers exceeding the target file's length?
+- What happens when user deletes the last line in the file?
+- How does the system handle page navigation when reaching the end of file?
+- What happens when terminal size changes during execution?
+- How does the system handle fingerprints with file paths containing colons (e.g., archives)?
+- What happens when cursor is at the bottom of viewport during smooth scrolling?
+- How does the system handle empty file state after all lines are deleted?
 
 ## Requirements *(mandatory)*
 
@@ -106,6 +167,17 @@ A developer viewing .gitleaksignore patterns wants visual cues to distinguish di
 - **FR-013**: System MUST handle keyboard interrupts (Ctrl+C) safely without corrupting the file
 - **FR-014**: System MUST distinguish between different content types (comments, patterns, blank lines)
 - **FR-015**: System MUST support both viewing-only mode and editing mode
+- **FR-016**: System MUST display a visual cursor indicator showing the currently selected line
+- **FR-017**: System MUST parse fingerprint entries to extract file path, line number, rule ID, and optional commit hash
+- **FR-018**: System MUST display a live preview pane showing source file content for fingerprint entries
+- **FR-019**: System MUST support toggling preview pane visibility on/off
+- **FR-020**: System MUST handle fingerprint entries in both full format (with commit hash) and short format (without commit hash)
+- **FR-021**: System MUST support line deletion with automatic backup creation
+- **FR-022**: System MUST require confirmation for deletion operations (dd command requires two 'd' presses)
+- **FR-023**: System MUST renumber all lines after deletion operations
+- **FR-024**: System MUST handle empty file state after deleting the last line
+- **FR-025**: System MUST adjust viewport to terminal size for proper scrolling
+- **FR-026**: System MUST implement smooth scrolling with scroll margin to prevent cursor from reaching screen edges
 
 ### Key Entities
 
@@ -113,6 +185,9 @@ A developer viewing .gitleaksignore patterns wants visual cues to distinguish di
 - **Line Range**: Represents a continuous sequence of lines to be displayed, with start line number, end line number, and the associated content. Used for viewing and navigation operations.
 - **Edit Operation**: Represents a modification to a specific line, including original content, new content, line number, and timestamp. Used for tracking changes and enabling undo functionality.
 - **File Context**: Represents the state of the .gitleaksignore file, including file path, total line count, last modified timestamp, and current view position. Used for navigation and file integrity checks.
+- **Preview Content**: Represents the source file content referenced by a fingerprint entry, including target file path, target line number, displayed lines (with context), and start line number for the preview window.
+- **View State**: Represents the current view configuration, including visible line range, current cursor position, scroll offset, preview enabled status, and preview content.
+- **Delete Operation**: Represents a line deletion operation, including deleted line number, original content, and backup file path. Used for tracking deletions and maintaining file integrity.
 
 ## Success Criteria *(mandatory)*
 

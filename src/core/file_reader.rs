@@ -156,6 +156,11 @@ impl FileContext {
 
     /// Get a range of lines
     pub fn get_range(&self, start: usize, end: usize) -> Result<Vec<Line>> {
+        // Handle empty files
+        if start == 0 && end == 0 {
+            return Ok(Vec::new());
+        }
+
         if start == 0 || end == 0 {
             return Err(GliError::InvalidArguments(
                 "Line numbers must be >= 1".to_string(),

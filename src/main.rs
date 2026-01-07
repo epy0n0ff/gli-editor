@@ -108,6 +108,11 @@ impl LineSpec {
 
     /// Calculate the actual line range to display
     pub fn calculate_range(&self, total_lines: usize) -> Result<(usize, usize)> {
+        // Handle empty files
+        if total_lines == 0 {
+            return Ok((0, 0));
+        }
+
         match self {
             LineSpec::All => Ok((1, total_lines)),
             LineSpec::Single { line, context } => {

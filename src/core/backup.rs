@@ -15,11 +15,6 @@ impl BackupManager {
         Self { max_backups: 5 }
     }
 
-    /// Create a new BackupManager with custom max backups
-    pub fn with_max_backups(max_backups: usize) -> Self {
-        Self { max_backups }
-    }
-
     /// Create a timestamped backup of a file
     ///
     /// Returns the path to the created backup file
@@ -85,27 +80,6 @@ impl BackupManager {
         }
 
         Ok(())
-    }
-
-    /// List all backups for a file
-    pub fn list_backups<P: AsRef<Path>>(&self, file_path: P) -> Result<Vec<PathBuf>> {
-        let path = file_path.as_ref();
-        let parent = path.parent().unwrap_or_else(|| Path::new("."));
-        let filename = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
-
-        let mut backups = Vec::new();
-        for entry in fs::read_dir(parent)? {
-            let entry = entry?;
-            let entry_path = entry.path();
-
-            if let Some(entry_name) = entry_path.file_name().and_then(|s| s.to_str()) {
-                if entry_name.starts_with(filename) && entry_name.contains(".backup.") {
-                    backups.push(entry_path);
-                }
-            }
-        }
-
-        Ok(backups)
     }
 }
 

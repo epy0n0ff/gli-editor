@@ -46,28 +46,4 @@ impl LineRange {
             entries,
         }
     }
-
-    /// Get the total number of lines in this range
-    pub fn total_lines(&self) -> usize {
-        self.end_line - self.start_line + 1
-    }
-
-    /// Check if the range is empty
-    pub fn is_empty(&self) -> bool {
-        self.entries.is_empty()
-    }
-
-    /// Check if a line number is within this range
-    pub fn contains_line(&self, line_number: usize) -> bool {
-        line_number >= self.start_line && line_number <= self.end_line
-    }
-
-    /// Get a line by its number (returns None if not in range)
-    pub fn get_line(&self, line_number: usize) -> Option<&Line> {
-        if !self.contains_line(line_number) {
-            return None;
-        }
-        let index = line_number - self.start_line;
-        self.entries.get(index)
-    }
 }

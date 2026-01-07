@@ -466,6 +466,7 @@ impl App {
     }
 
     /// Jump to specific line (T050)
+    #[allow(dead_code)]
     fn jump_to_line(&mut self, target_line: usize) -> Result<()> {
         if target_line == 0 || target_line > self.view_state.file_context.total_lines {
             self.save_message = Some(format!("Invalid line number: {}", target_line));

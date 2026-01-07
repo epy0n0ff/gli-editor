@@ -175,6 +175,7 @@ pub struct App {
     should_quit: bool,
     backup_manager: BackupManager,
     save_message: Option<String>,
+    pending_delete: bool,
 }
 
 impl App {
@@ -199,6 +200,7 @@ impl App {
             should_quit: false,
             backup_manager: BackupManager::new(),
             save_message: None,
+            pending_delete: false,
         })
     }
 
@@ -284,6 +286,75 @@ impl App {
         self.mode = AppMode::View;
         self.edit_state = None;
         self.save_message = Some("Edit cancelled".to_string());
+    }
+
+    /// Delete the current line
+    fn delete_current_line(&mut self) -> Result<()> {
+        if self.read_only {
+            self.save_message = Some("Read-only mode: deletion disabled".to_string());
+            return Ok(());
+        }
+
+        let line_number = self.view_state.current_line;
+
+        // Can't delete from empty file
+        if self.view_state.file_context.total_lines == 0 {
+            self.save_message = Some("Cannot delete from empty file".to_string());
+            return Ok(());
+        }
+
+        // Create backup before deletion
+        let backup_path = self
+            .backup_manager
+            .create_backup(&self.view_state.file_context.file_path)?;
+
+        // Delete the line
+        self.view_state.file_context.delete_line(line_number)?;
+
+        // Write the changes atomically
+        self.view_state.file_context.write_atomic()?;
+
+        // Adjust current_line if we deleted the last line
+        if line_number > self.view_state.file_context.total_lines {
+            self.view_state.current_line = self.view_state.file_context.total_lines;
+        }
+
+        // Handle empty file after deletion
+        if self.view_state.file_context.total_lines == 0 {
+            self.view_state.current_line = 0;
+            self.view_state.visible_range = LineRange::new(0, 0, Vec::new());
+            self.save_message = Some(format!(
+                "Deleted line {} (backup: {}). File is now empty.",
+                line_number,
+                backup_path
+                    .file_name()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("created")
+            ));
+            return Ok(());
+        }
+
+        // Update visible range to reflect the deletion
+        let (start, end) = (
+            self.view_state.visible_range.start_line,
+            self.view_state.visible_range.end_line.min(self.view_state.file_context.total_lines),
+        );
+        let lines = self.view_state.file_context.get_range(start, end)?;
+        self.view_state.visible_range = LineRange::new(start, end, lines);
+
+        // Update preview for new current line
+        self.view_state.update_preview();
+
+        self.save_message = Some(format!(
+            "Deleted line {} (backup: {})",
+            line_number,
+            backup_path
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or("created")
+        ));
+
+        Ok(())
     }
 
     /// Scroll up by one line (T044)
@@ -518,41 +589,70 @@ impl App {
                         self.enter_edit_mode()?;
                     }
                     KeyCode::Esc => {
-                        // Clear save message on Esc in view mode
+                        // Clear save message and cancel pending delete on Esc in view mode
                         self.save_message = None;
+                        self.pending_delete = false;
                     }
                     // Navigation: scroll up
                     KeyCode::Char('k') | KeyCode::Up => {
+                        self.pending_delete = false;
                         self.scroll_up()?;
                     }
                     // Navigation: scroll down
                     KeyCode::Char('j') | KeyCode::Down => {
+                        self.pending_delete = false;
                         self.scroll_down()?;
                     }
                     // Navigation: page up
                     KeyCode::Char('u') | KeyCode::PageUp => {
+                        self.pending_delete = false;
                         self.page_up()?;
                     }
-                    // Navigation: page down
+                    // Navigation: page down / Delete line (dd)
                     KeyCode::Char('d') | KeyCode::PageDown => {
-                        self.page_down()?;
+                        if key.code == KeyCode::Char('d') {
+                            if self.pending_delete {
+                                // Second 'd' press - execute deletion
+                                self.delete_current_line()?;
+                                self.pending_delete = false;
+                            } else {
+                                // First 'd' press - set pending state
+                                self.pending_delete = true;
+                                self.save_message = Some("Press 'd' again to delete line".to_string());
+                            }
+                        } else {
+                            // PageDown key
+                            self.pending_delete = false;
+                            self.page_down()?;
+                        }
                     }
                     // Navigation: jump to top
                     KeyCode::Char('g') | KeyCode::Home => {
+                        self.pending_delete = false;
                         self.jump_to_top()?;
                     }
                     // Navigation: jump to bottom
                     KeyCode::Char('G') | KeyCode::End => {
+                        self.pending_delete = false;
                         self.jump_to_bottom()?;
                     }
                     // Toggle preview pane
                     KeyCode::Char('p') => {
+                        self.pending_delete = false;
                         self.view_state.preview_enabled = !self.view_state.preview_enabled;
                         if self.view_state.preview_enabled {
                             self.view_state.update_preview();
                         }
                     }
-                    _ => {}
+                    // Delete key - alternative to dd
+                    KeyCode::Delete => {
+                        self.delete_current_line()?;
+                        self.pending_delete = false;
+                    }
+                    _ => {
+                        // Any other key cancels pending delete
+                        self.pending_delete = false;
+                    }
                 }
             }
             AppMode::Edit => {

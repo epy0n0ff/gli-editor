@@ -8,6 +8,7 @@ Terminal editor for `.gitleaksignore` files with syntax highlighting and inline 
 - 👁️ **Live Preview Pane**: Automatically displays the source file and highlighted line referenced by fingerprints
 - 👉 **Current Line Indicator**: Visual cursor showing active line (yellow line number + background highlight)
 - ✏️ **Edit Mode**: Inline editing of individual entries
+- 🗑️ **Delete Lines**: Remove entries with vim-style `dd` command or Delete key
 - 🎨 **Syntax Highlighting**: Pattern-based coloring for fingerprints, comments, and invalid entries
 - 🔒 **Safe Editing**: Automatic backups and atomic file writes
 - ⚡ **Fast**: Optimized for files with 10,000+ lines
@@ -66,6 +67,7 @@ gli-editor --help
 - `G` / `End` - Jump to bottom
 - `p` - Toggle preview pane on/off
 - `i` / `Enter` - Edit current line
+- `dd` / `Delete` - Delete current line (creates backup)
 - `q` - Quit
 
 ### Edit Mode

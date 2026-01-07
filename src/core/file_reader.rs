@@ -229,6 +229,26 @@ impl FileContext {
 
         Ok(())
     }
+
+    /// Delete a specific line
+    pub fn delete_line(&mut self, line_number: usize) -> Result<()> {
+        if line_number == 0 || line_number > self.total_lines {
+            return Err(GliError::LineOutOfBounds(line_number, self.total_lines));
+        }
+
+        // Remove the line from the vector
+        self.lines.remove(line_number - 1);
+
+        // Update total_lines count
+        self.total_lines = self.lines.len();
+
+        // Re-number all subsequent lines
+        for (idx, line) in self.lines.iter_mut().enumerate().skip(line_number - 1) {
+            line.line_number = idx + 1;
+        }
+
+        Ok(())
+    }
 }
 
 /// FileSnapshot for concurrent modification detection

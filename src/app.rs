@@ -346,7 +346,7 @@ impl App {
             .start_line
             .saturating_sub(page_size)
             .max(1);
-        let new_end = (new_start + page_size - 1).min(self.view_state.file_context.total_lines);
+        let new_end = (new_start + page_size).min(self.view_state.file_context.total_lines);
         self.update_visible_range(new_start, new_end)?;
         self.view_state.current_line = new_start;
         Ok(())
@@ -356,9 +356,13 @@ impl App {
     fn page_down(&mut self) -> Result<()> {
         let page_size =
             self.view_state.visible_range.end_line - self.view_state.visible_range.start_line;
+
+        // Calculate new_start, but ensure we don't go beyond what allows a valid range
+        let total_lines = self.view_state.file_context.total_lines;
         let new_start = (self.view_state.visible_range.start_line + page_size)
-            .min(self.view_state.file_context.total_lines);
-        let new_end = (new_start + page_size - 1).min(self.view_state.file_context.total_lines);
+            .min(total_lines.saturating_sub(page_size).max(1));
+        let new_end = (new_start + page_size).min(total_lines);
+
         self.update_visible_range(new_start, new_end)?;
         self.view_state.current_line = new_start;
         Ok(())
@@ -368,7 +372,7 @@ impl App {
     fn jump_to_top(&mut self) -> Result<()> {
         let page_size =
             self.view_state.visible_range.end_line - self.view_state.visible_range.start_line;
-        let new_end = (1 + page_size - 1).min(self.view_state.file_context.total_lines);
+        let new_end = (1 + page_size).min(self.view_state.file_context.total_lines);
         self.update_visible_range(1, new_end)?;
         self.view_state.current_line = 1;
         Ok(())
@@ -402,7 +406,7 @@ impl App {
         let half_page = page_size / 2;
 
         let new_start = target_line.saturating_sub(half_page).max(1);
-        let new_end = (new_start + page_size - 1).min(self.view_state.file_context.total_lines);
+        let new_end = (new_start + page_size).min(self.view_state.file_context.total_lines);
 
         self.update_visible_range(new_start, new_end)?;
         self.view_state.current_line = target_line;

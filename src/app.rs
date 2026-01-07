@@ -408,6 +408,9 @@ impl App {
         let backend = CrosstermBackend::new(stdout);
         let mut terminal = Terminal::new(backend)?;
 
+        // Adjust viewport to terminal size
+        self.adjust_viewport_to_screen(&mut terminal)?;
+
         // Main loop
         let result = self.run_loop(&mut terminal);
 
@@ -417,6 +420,37 @@ impl App {
         terminal.show_cursor()?;
 
         result
+    }
+
+    /// Adjust viewport to fit terminal screen size
+    fn adjust_viewport_to_screen<B: ratatui::backend::Backend>(
+        &mut self,
+        terminal: &mut Terminal<B>,
+    ) -> Result<()> {
+        let size = terminal.size()?;
+
+        // Calculate available height for content (minus status line and borders)
+        let content_height = size.height.saturating_sub(3) as usize; // -1 status, -2 borders
+
+        if content_height == 0 {
+            return Ok(());
+        }
+
+        // Adjust visible range to screen size
+        let current_line = self.view_state.current_line;
+        let total_lines = self.view_state.file_context.total_lines;
+
+        // Center current line in viewport
+        let half_height = content_height / 2;
+        let new_start = current_line.saturating_sub(half_height).max(1);
+        let new_end = (new_start + content_height - 1).min(total_lines);
+
+        // Update visible range
+        let lines = self.view_state.file_context.get_range(new_start, new_end)?;
+        self.view_state.visible_range = LineRange::new(new_start, new_end, lines);
+        self.view_state.scroll_offset = new_start - 1;
+
+        Ok(())
     }
 
     fn run_loop<B: ratatui::backend::Backend>(&mut self, terminal: &mut Terminal<B>) -> Result<()> {

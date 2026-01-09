@@ -15,7 +15,7 @@ use std::path::PathBuf;
 /// Terminal editor for .gitleaksignore files
 #[derive(Parser, Debug)]
 #[command(name = "gli-editor")]
-#[command(version = "1.0.0")]
+#[command(version = "1.1.0")]
 #[command(about = "Terminal editor for .gitleaksignore files", long_about = None)]
 struct Cli {
     /// Path to .gitleaksignore file

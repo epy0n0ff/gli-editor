@@ -67,17 +67,87 @@ impl ViewState {
         if let Some(line) = self.file_context.get_line(self.current_line) {
             // Extract file path and line number from fingerprint
             if let crate::models::pattern::PatternType::Fingerprint {
+                commit_hash,
                 file_path,
                 line_number,
                 ..
             } = &line.pattern_type
             {
                 // Try to read the target file
-                if let Ok(content) = Self::read_preview_file(file_path, *line_number) {
-                    self.preview_content = Some(content);
+                let result = if let Some(hash) = commit_hash {
+                    // Read from specific git commit
+                    Self::read_preview_from_git(hash, file_path, *line_number)
+                } else {
+                    // Read from current filesystem
+                    Self::read_preview_file(file_path, *line_number)
+                };
+
+                match result {
+                    Ok(content) => {
+                        self.preview_content = Some(content);
+                    }
+                    Err(_e) => {
+                        // Silently fail - preview just won't be shown
+                    }
                 }
             }
         }
+    }
+
+    /// Read preview content from a specific git commit
+    fn read_preview_from_git(commit_hash: &str, file_path: &str, target_line: u32) -> Result<PreviewContent> {
+        use std::process::Command;
+
+        let target_line = target_line as usize;
+        let context = 10; // Show ±10 lines around target
+
+        // Use git show to get file content at specific commit
+        let output = Command::new("git")
+            .args(["show", &format!("{}:{}", commit_hash, file_path)])
+            .output()
+            .map_err(|e| {
+                crate::error::GliError::FileNotFound(format!("Failed to execute git: {}", e))
+            })?;
+
+        if !output.status.success() {
+            return Err(crate::error::GliError::FileNotFound(format!(
+                "Git command failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+
+        // Parse output as lines
+        let content = String::from_utf8_lossy(&output.stdout);
+        let all_lines: Vec<String> = content.lines().map(|s| s.to_string()).collect();
+
+        if all_lines.is_empty() {
+            return Err(crate::error::GliError::FileNotFound(
+                "File is empty in commit".to_string(),
+            ));
+        }
+
+        // Clamp target_line to file bounds
+        let target_line = target_line.min(all_lines.len());
+
+        let start_line = target_line.saturating_sub(context).max(1);
+        let end_line = (target_line + context).min(all_lines.len());
+
+        // Ensure start_line is valid for slicing
+        let start_idx = (start_line - 1).min(all_lines.len().saturating_sub(1));
+        let end_idx = end_line.min(all_lines.len());
+
+        let lines = if start_idx < end_idx {
+            all_lines[start_idx..end_idx].to_vec()
+        } else {
+            vec![]
+        };
+
+        Ok(PreviewContent {
+            file_path: format!("{}@{}", file_path, &commit_hash[..7]), // Show short hash in preview
+            target_line,
+            lines,
+            start_line,
+        })
     }
 
     /// Read preview content from target file

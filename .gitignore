@@ -44,3 +44,6 @@ coverage/
 
 # Backups created by the application itself
 .gitleaksignore.backup.*
+
+# Distribution artifacts
+dist/

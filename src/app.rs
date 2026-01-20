@@ -154,12 +154,33 @@ impl ViewState {
     fn read_preview_file(file_path: &str, target_line: u32) -> Result<PreviewContent> {
         use std::fs::File;
         use std::io::{BufRead, BufReader};
+        use std::path::Path;
 
         let target_line = target_line as usize;
         let context = 10; // Show ±10 lines around target
 
-        let file = File::open(file_path).map_err(|_| {
-            crate::error::GliError::FileNotFound(format!("Preview file not found: {}", file_path))
+        // Handle relative paths by resolving them
+        let path = Path::new(file_path);
+        let absolute_path = if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            // Resolve relative path from current directory
+            std::env::current_dir()
+                .map(|cwd| cwd.join(file_path))
+                .unwrap_or_else(|_| path.to_path_buf())
+        };
+
+        // Check if file exists before trying to open it
+        if !absolute_path.exists() {
+            return Err(crate::error::GliError::FileNotFound(format!(
+                "Preview file not found: {} (resolved to: {})",
+                file_path,
+                absolute_path.display()
+            )));
+        }
+
+        let file = File::open(&absolute_path).map_err(|e| {
+            crate::error::GliError::IoError(e)
         })?;
 
         let reader = BufReader::new(file);
@@ -393,6 +414,7 @@ impl App {
         if self.view_state.file_context.total_lines == 0 {
             self.view_state.current_line = 0;
             self.view_state.visible_range = LineRange::new(0, 0, Vec::new());
+            self.view_state.preview_content = None; // Clear preview for empty file
             self.save_message = Some(format!(
                 "Deleted line {} (backup: {}). File is now empty.",
                 line_number,
@@ -409,6 +431,11 @@ impl App {
             self.view_state.visible_range.start_line,
             self.view_state.visible_range.end_line.min(self.view_state.file_context.total_lines),
         );
+
+        // Ensure start_line is valid after deletion
+        let start = start.min(self.view_state.file_context.total_lines).max(1);
+        let end = end.max(start); // Ensure end >= start
+
         let lines = self.view_state.file_context.get_range(start, end)?;
         self.view_state.visible_range = LineRange::new(start, end, lines);
 

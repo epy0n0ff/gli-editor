@@ -134,6 +134,14 @@ impl FileContext {
 
     /// Refresh metadata from filesystem
     pub fn refresh_metadata(&mut self) -> Result<()> {
+        // Check if file exists before trying to get metadata
+        if !self.file_path.exists() {
+            return Err(GliError::FileNotFound(format!(
+                "File no longer exists: {}",
+                self.file_path.display()
+            )));
+        }
+
         let metadata = fs::metadata(&self.file_path)?;
         self.last_modified_time = metadata.modified()?;
         Ok(())
